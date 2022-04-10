@@ -25,11 +25,50 @@ SET default_table_access_method = heap;
 --
 
 CREATE TABLE public.grades (
-    grades integer
+    id integer NOT NULL,
+    student_github character varying(30),
+    project_title character varying(30),
+    grade integer
 );
 
 
 ALTER TABLE public.grades OWNER TO gingerbreadhouse;
+
+--
+-- Name: grades_id_seq; Type: SEQUENCE; Schema: public; Owner: gingerbreadhouse
+--
+
+CREATE SEQUENCE public.grades_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.grades_id_seq OWNER TO gingerbreadhouse;
+
+--
+-- Name: grades_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gingerbreadhouse
+--
+
+ALTER SEQUENCE public.grades_id_seq OWNED BY public.grades.id;
+
+
+--
+-- Name: new_students; Type: TABLE; Schema: public; Owner: gingerbreadhouse
+--
+
+CREATE TABLE public.new_students (
+    id integer NOT NULL,
+    first_name character varying(30),
+    last_name character varying(30),
+    github character varying(30) NOT NULL
+);
+
+
+ALTER TABLE public.new_students OWNER TO gingerbreadhouse;
 
 --
 -- Name: projects; Type: TABLE; Schema: public; Owner: gingerbreadhouse
@@ -68,18 +107,21 @@ ALTER SEQUENCE public.projects_id_seq OWNED BY public.projects.id;
 
 
 --
--- Name: students; Type: TABLE; Schema: public; Owner: gingerbreadhouse
+-- Name: report_card_view; Type: VIEW; Schema: public; Owner: gingerbreadhouse
 --
 
-CREATE TABLE public.students (
-    id integer NOT NULL,
-    first_name character varying(30),
-    last_name character varying(30),
-    github character varying(30)
-);
+CREATE VIEW public.report_card_view AS
+ SELECT new_students.first_name,
+    new_students.last_name,
+    projects.title,
+    projects.max_grade,
+    grades.grade
+   FROM ((public.new_students
+     JOIN public.grades ON (((new_students.github)::text = (grades.student_github)::text)))
+     JOIN public.projects ON (((projects.title)::text = (grades.project_title)::text)));
 
 
-ALTER TABLE public.students OWNER TO gingerbreadhouse;
+ALTER TABLE public.report_card_view OWNER TO gingerbreadhouse;
 
 --
 -- Name: students_id_seq; Type: SEQUENCE; Schema: public; Owner: gingerbreadhouse
@@ -100,7 +142,21 @@ ALTER TABLE public.students_id_seq OWNER TO gingerbreadhouse;
 -- Name: students_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: gingerbreadhouse
 --
 
-ALTER SEQUENCE public.students_id_seq OWNED BY public.students.id;
+ALTER SEQUENCE public.students_id_seq OWNED BY public.new_students.id;
+
+
+--
+-- Name: grades id; Type: DEFAULT; Schema: public; Owner: gingerbreadhouse
+--
+
+ALTER TABLE ONLY public.grades ALTER COLUMN id SET DEFAULT nextval('public.grades_id_seq'::regclass);
+
+
+--
+-- Name: new_students id; Type: DEFAULT; Schema: public; Owner: gingerbreadhouse
+--
+
+ALTER TABLE ONLY public.new_students ALTER COLUMN id SET DEFAULT nextval('public.students_id_seq'::regclass);
 
 
 --
@@ -111,17 +167,24 @@ ALTER TABLE ONLY public.projects ALTER COLUMN id SET DEFAULT nextval('public.pro
 
 
 --
--- Name: students id; Type: DEFAULT; Schema: public; Owner: gingerbreadhouse
---
-
-ALTER TABLE ONLY public.students ALTER COLUMN id SET DEFAULT nextval('public.students_id_seq'::regclass);
-
-
---
 -- Data for Name: grades; Type: TABLE DATA; Schema: public; Owner: gingerbreadhouse
 --
 
-COPY public.grades (grades) FROM stdin;
+COPY public.grades (id, student_github, project_title, grade) FROM stdin;
+1	jhacks	Markov	10
+2	jhacks	Blockly	2
+3	sdevelops	Markov	50
+4	sdevelops	Blockly	100
+\.
+
+
+--
+-- Data for Name: new_students; Type: TABLE DATA; Schema: public; Owner: gingerbreadhouse
+--
+
+COPY public.new_students (id, first_name, last_name, github) FROM stdin;
+1	Jane	Hacker	jhacks
+2	Sarah	Developer	sdevelops
 \.
 
 
@@ -139,13 +202,10 @@ COPY public.projects (id, title, description, max_grade) FROM stdin;
 
 
 --
--- Data for Name: students; Type: TABLE DATA; Schema: public; Owner: gingerbreadhouse
+-- Name: grades_id_seq; Type: SEQUENCE SET; Schema: public; Owner: gingerbreadhouse
 --
 
-COPY public.students (id, first_name, last_name, github) FROM stdin;
-1	Jane	Hacker	jhacks
-2	Sarah	Developer	sdevelops
-\.
+SELECT pg_catalog.setval('public.grades_id_seq', 4, true);
 
 
 --
@@ -163,6 +223,14 @@ SELECT pg_catalog.setval('public.students_id_seq', 2, true);
 
 
 --
+-- Name: grades grades_pkey; Type: CONSTRAINT; Schema: public; Owner: gingerbreadhouse
+--
+
+ALTER TABLE ONLY public.grades
+    ADD CONSTRAINT grades_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: projects projects_pkey; Type: CONSTRAINT; Schema: public; Owner: gingerbreadhouse
 --
 
@@ -171,11 +239,11 @@ ALTER TABLE ONLY public.projects
 
 
 --
--- Name: students students_pkey; Type: CONSTRAINT; Schema: public; Owner: gingerbreadhouse
+-- Name: new_students students_pkey; Type: CONSTRAINT; Schema: public; Owner: gingerbreadhouse
 --
 
-ALTER TABLE ONLY public.students
-    ADD CONSTRAINT students_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.new_students
+    ADD CONSTRAINT students_pkey PRIMARY KEY (github);
 
 
 --
